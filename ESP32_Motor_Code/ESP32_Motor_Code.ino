@@ -27,10 +27,13 @@ TaskHandle_t Task2;
 int isFeedingStart = 0;
 
 // servo
-Servo servoPI;
-Servo servo2PI;
+Servo servoPI;  // 180도 회전 서보모터
+Servo servo2PI; // 360도 회전 서보모터
 const int servoPI_Pin = 5;
 const int servo2PI_Pin = 17;
+
+// LED pins
+const int led = 16;
 
 // button
 const int buttonPin = 15;
@@ -62,10 +65,10 @@ void feedPet(int amount) {
   Serial.println("함수 호출!!!");
   isFeedingStart = 1;
   if (amount > 0) {
-    // 360도 모터 돌리기
-    delay(500);
+    servo2PI.write(100);  // 360도 모터 회전 시작
+    delay(1000);
 
-    // 초기화
+    // 180도 모터 회전 시작
     if (servoPI.read() > 10) {
       servoPI.write(180);
       for (int pos = 179; pos >= 0; pos--) {
@@ -74,7 +77,7 @@ void feedPet(int amount) {
       }
       amount--;
     }
-    delay(1000);
+    delay(500);
 
     int i = 0;
     while (i < amount) {
@@ -83,6 +86,7 @@ void feedPet(int amount) {
         delay(20);
       }
       i++;
+      delay(500);
 
       if (i >= amount) {
         break;
@@ -93,9 +97,11 @@ void feedPet(int amount) {
         delay(20);
       }
       i++;
+      delay(500);
     }
 
     delay(500);
+    servo2PI.write(90); // 360도 모터 정지
   }
 
   isFeedingStart = 0;
@@ -163,6 +169,7 @@ void setup() {
   // attach servo
   servoPI.attach(servoPI_Pin);
   servo2PI.attach(servo2PI_Pin);
+  servoPI.write(0); // 180도 서보모터 초기화
 
   // 초음파 센서
   pinMode(trigPin, OUTPUT);
@@ -170,6 +177,10 @@ void setup() {
 
   // initialize the button and Interrupt
   pinMode(buttonPin, INPUT);
+
+  // led
+  pinMode(led, OUTPUT);
+  digitalWrite(led, HIGH);
 
   //create a task that will be executed in the Task1code() function,
   //with priority 1 and executed on core 0
@@ -212,11 +223,12 @@ void Task1code(void* pvParameters) {
       JSONVar myObj = JSON.parse(rcvdPayload);
       amount = myObj["state"]["reported"]["feed"];
 
-      Serial.printf("amount : %d", amount);
+      Serial.printf("amount : %d\n", amount);
 
       if (amount > 0) {
         feedCount = amount;
         feedPet(amount);
+        buttonClicks = 0; // 버튼을 클릭하는 도중에 명령이 왔다면 초기화해주기
       }
     } 
     else {
@@ -253,7 +265,7 @@ void Task1code(void* pvParameters) {
       Serial.println(feedCount);
 
       long dis = measureDistance();
-      Serial.print("dis : ");
+      Serial.print("distance : ");
       Serial.println(dis);
 
       if(dis > 10) {
@@ -263,12 +275,11 @@ void Task1code(void* pvParameters) {
         sprintf(payload, "{\"state\": { \"reported\": {\"feed_given\": true, \"feed_enough\": true}}}", feedCount);
       }
 
-      if (motor.publish(pTOPIC_NAME, payload) == 0) {
-        Serial.print("Feeding Done Publish Message:");
-        Serial.println(payload);
-      } else {
+      while(motor.publish(pTOPIC_NAME, payload) != 0){
         Serial.println("Feeding Done Publish failed");
       }
+      Serial.print("Feeding Done Publish Message:");
+      Serial.println(payload);
 
       isFeedingDone = false;
     }
@@ -284,18 +295,13 @@ void Task2code(void* pvParameters) {
   int pos = 0;
   for (;;) {
     if (isFeedingStart) {
-      Serial.println("turning start!!");
-      for (; pos <= 180; pos++) {
-        servo2PI.write(pos);
-        delay(20);
-      }
+      digitalWrite(led, LOW);
+      delay(1000);
 
-      for (; pos >= 0; pos--) {
-        servo2PI.write(pos);
-        delay(20);
-      }
+      digitalWrite(led, HIGH);
+      delay(1000);
     }
-    delay(10);
+    delay(50);
   }
 }
 
