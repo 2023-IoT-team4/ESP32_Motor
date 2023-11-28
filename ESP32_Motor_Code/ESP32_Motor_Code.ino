@@ -28,9 +28,7 @@ int isFeedingStart = 0;
 
 // servo
 Servo servoPI;  // 180도 회전 서보모터
-Servo servo2PI; // 360도 회전 서보모터
 const int servoPI_Pin = 5;
-const int servo2PI_Pin = 17;
 
 // LED pins
 const int led = 16;
@@ -65,15 +63,13 @@ void feedPet(int amount) {
   Serial.println("함수 호출!!!");
   isFeedingStart = 1;
   if (amount > 0) {
-    servo2PI.write(100);  // 360도 모터 회전 시작
-    delay(1000);
 
     // 180도 모터 회전 시작
     if (servoPI.read() > 10) {
       servoPI.write(180);
       for (int pos = 179; pos >= 0; pos--) {
         servoPI.write(pos);
-        delay(20);
+        delay(15);
       }
       amount--;
     }
@@ -83,7 +79,7 @@ void feedPet(int amount) {
     while (i < amount) {
       for (int pos = 0; pos <= 180; pos++) {
         servoPI.write(pos);
-        delay(20);
+        delay(15);
       }
       i++;
       delay(500);
@@ -101,7 +97,6 @@ void feedPet(int amount) {
     }
 
     delay(500);
-    servo2PI.write(90); // 360도 모터 정지
   }
 
   isFeedingStart = 0;
@@ -168,7 +163,6 @@ void setup() {
 
   // attach servo
   servoPI.attach(servoPI_Pin);
-  servo2PI.attach(servo2PI_Pin);
   servoPI.write(0); // 180도 서보모터 초기화
 
   // 초음파 센서
@@ -277,6 +271,7 @@ void Task1code(void* pvParameters) {
 
       while(motor.publish(pTOPIC_NAME, payload) != 0){
         Serial.println("Feeding Done Publish failed");
+        delay(10);
       }
       Serial.print("Feeding Done Publish Message:");
       Serial.println(payload);
@@ -292,7 +287,6 @@ void Task2code(void* pvParameters) {
   Serial.print("Task2 running on core ");
   Serial.println(xPortGetCoreID());
 
-  int pos = 0;
   for (;;) {
     if (isFeedingStart) {
       digitalWrite(led, LOW);
@@ -306,4 +300,5 @@ void Task2code(void* pvParameters) {
 }
 
 void loop() {
+  // do noting
 }
