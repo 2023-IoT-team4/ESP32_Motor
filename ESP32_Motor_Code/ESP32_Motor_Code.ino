@@ -91,8 +91,9 @@ void feedPet(int amount) {
 }
 
 // 초음파 센서로 거리측정 함수
-long measureDistance() {
-  long duration, distance;
+float measureDistance() {
+  long duration;
+  float distance;
 
   //Triggering by 10us pulse
   digitalWrite(trigPin, LOW);  // trig low for 2us
@@ -106,7 +107,7 @@ long measureDistance() {
 
   // sound speed = 340 m/s = 34/1000 cm/us
   // distance = duration * 34/1000 * 1/2
-  distance = duration * 17 / 1000;
+  distance = (float)duration * 17.0f / 1000.0f;
   delay(10);
 
   return distance;
@@ -247,13 +248,18 @@ void Task1code(void* pvParameters) {
       Serial.print("feed amount : ");
       Serial.println(feedCount);
 
-      long dis = measureDistance();
+      float dis = measureDistance();
       Serial.print("distance : ");
       Serial.println(dis);
 
       // 높이의 비율을 이용해서 남은 사료량의 %를 구했다. 하지만 실제 사료통은 원뿔 형태로
       // 높이와 반지름간에 비율과 원뿔 부피 공식을 이용해서 구해야지 정확하겠다.
-      float remaining_percentage = min(100.0f, ((17.0f - (float)dis) / 17.0f) * 100.0f);
+      // 사료통이 비어있을 경우 20cm가 탐지되는 것을 이용했습니다.
+      float remaining_percentage = (((20.0f - (float)dis) / 20.0f) * 100.0f);
+      if(remaining_percentage < 0.0f){
+        remaining_percentage = 0.0f;
+      }
+
       sprintf(payload, "{\"state\": { \"reported\": {\"feed_given\": true, \"feed_enough\": %.2f}}}", remaining_percentage);
 
       // topic에 publish 될 때까지 진행하기
